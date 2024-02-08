@@ -1,19 +1,13 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from rango.forms import PageForm
-from rango.forms import CategoryForm
-# Import the Category model
-from rango.models import Category, Page
-from rango.forms import UserForm, UserProfileForm
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from rango.models import Category, Page
+from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 from django.urls import reverse
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from datetime import datetime
 
 
-# Create your views here.
 def index(request):
     # Query the database for a list of ALL categories currently stored.
     # Order the categories by the number of likes in descending order.
@@ -29,7 +23,6 @@ def index(request):
 
     # Call the helper function to handle the cookies
     visitor_cookie_handler(request)
-    context_dict['visits'] = request.session['visits']
 
     # Obtain our Response object early so we can add cookie information.
     response = render(request, 'rango/index.html', context=context_dict)
@@ -48,7 +41,7 @@ def show_category(request, category_name_slug):
         # The .get() method returns one model instance or raises an exception.
         category = Category.objects.get(slug=category_name_slug)
 
-        # Retrieve all the associated pages.
+        # Retrieve all of the associated pages.
         # The filter() will return a list of page objects or an empty list.
         pages = Page.objects.filter(category=category)
 
@@ -73,20 +66,25 @@ def about(request):
     # prints out whether the method is a GET or a POST
     print(request.method)
 
+    visitor_cookie_handler(request)
+    context_dict = {}
+    context_dict['visits'] = request.session['visits']
+    response = render(request, 'rango/about.html', context=context_dict)
+
     # prints out the user name, if no one is logged in its prints 'AnonymousUser'
     print(request.user)
-    return render(request, 'rango/about.html', {})
-    if request.session.test_cookie_worked():
-        print("TEST COOKIE WORKED!")
-        request.session.delete_test_cookie()
+
+    return response
 
 
 @login_required
 def add_category(request):
     form = CategoryForm()
+
     # A HTTP POST?
     if request.method == 'POST':
         form = CategoryForm(request.POST)
+
         # Have we been provided with a valid form?
         if form.is_valid():
             # Save the new category to the database.
@@ -95,11 +93,13 @@ def add_category(request):
             # For now, just redirect the user back to the index view.
             return redirect('/rango/')
         else:
+            # The supplied form contained errors -
             # just print them to the terminal.
             print(form.errors)
-        # Will handle the bad form, new form, or no form supplied cases.
-        # Render the form with error messages (if any).
-        return render(request, 'rango/add_category.html', {'form': form})
+
+    # Will handle the bad form, new form, or no form supplied cases.
+    # Render the form with error messages (if any).
+    return render(request, 'rango/add_category.html', {'form': form})
 
 
 @login_required
@@ -142,7 +142,7 @@ def register(request):
     # True when registration succeeds.
     registered = False
 
-    # If it's HTTP POST, we're interested in processing form data.
+    # If it's a HTTP POST, we're interested in processing form data.
     if request.method == 'POST':
         # Attempt to grab information from the raw form information.
         # Note that we make use of both UserForm and UserProfileForm.
@@ -196,9 +196,8 @@ def register(request):
                            'registered': registered})
 
 
-@login_required
 def user_login(request):
-    # If the request is HTTP POST, try to pull out the relevant information.
+    # If the request is a HTTP POST, try to pull out the relevant information.
     if request.method == 'POST':
         # Gather the username and password provided by the user.
         # This information is obtained from the login form.
@@ -239,6 +238,11 @@ def user_login(request):
         # blank dictionary object...
         return render(request, 'rango/login.html')
 
+from django.shortcuts import render
+
+def login_view(request):
+    pass
+
 
 @login_required
 def restricted(request):
@@ -253,25 +257,6 @@ def user_logout(request):
     logout(request)
     # Take the user back to the homepage.
     return redirect(reverse('rango:index'))
-
-
-# The supplied form contained errors -
-def about(request):
-    # Your view logic here
-    return render(request, 'rango/about.html')
-
-
-def index(request):
-    context_dict = {'boldmessage': 'Crunchy, creamy, cookie, candy, cupcake!'}
-    return render(request, 'rango/index.html', context=context_dict)
-
-
-def login_view(request):
-    return render(request, 'rango/login.html')
-
-
-def get_server_side_cookie(request, param, param1):
-    pass
 
 
 # A helper method
